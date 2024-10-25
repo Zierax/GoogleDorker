@@ -19,8 +19,8 @@ Google Dork Finder is an advanced Python tool designed for efficient and compreh
 
 1. Clone the repository:
    ```
-   git clone https://github.com/yourusername/google-dork-finder.git
-   cd google-dork-finder
+   git clone https://github.com/Zierax/GoogleDorker.git
+   cd GoogleDorker
    ```
 
 2. Install required packages:

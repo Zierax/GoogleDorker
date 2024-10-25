@@ -1,0 +1,13 @@
+argparse
+requests
+beautifulsoup4
+googlesearch-python
+termcolor
+tqdm
+selenium
+fake-useragent
+undetected-chromedriver
+anticaptchaofficial
+rich
+http.cookiejar
+stem

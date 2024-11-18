@@ -10,7 +10,6 @@ import re
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from bs4 import BeautifulSoup
-from googlesearch import search
 from termcolor import colored
 from tqdm import tqdm
 from selenium import webdriver
@@ -177,34 +176,49 @@ def perform_search(dork: str, args: argparse.Namespace, user_agents: List[str]) 
     return results
 
 def search_with_rotation(dork: str, num_results: int, user_agents: List[str]) -> List[str]:
-    """Perform search with rotation of user agents and cookies."""
+    """Perform search with rotation of user agents using requests."""
     results = []
     session = requests.Session()
-    cookiejar = http.cookiejar.CookieJar()
-    session.cookies = cookiejar
-
+    base_url = "https://www.google.com/search"
+    start = 0  # Pagination starts at 0 for Google
+    
     while len(results) < num_results:
         try:
             # Rotate user agent
             session.headers.update({'User-Agent': get_random_user_agent(user_agents)})
             
-            # Clear cookies
-            session.cookies.clear()
-            
             # Perform search
-            for url in search(dork, num=10, stop=10, pause=2, user_agent=session.headers['User-Agent']):
-                if url not in results:
-                    results.append(url)
-                    if len(results) >= num_results:
-                        break
+            params = {
+                'q': dork,
+                'start': start,
+                'num': 10,  # Number of results per page
+                'hl': 'en'  # Language
+            }
+            response = session.get(base_url, params=params, timeout=10)
+            response.raise_for_status()
             
-            # Add delay between requests
+            # Parse the HTML content
+            soup = BeautifulSoup(response.text, 'html.parser')
+            for a_tag in soup.select('a[href^="/url?q="]'):
+                href = a_tag.get('href')
+                url = re.search(r'/url\?q=(.*?)&', href)
+                if url:
+                    decoded_url = url.group(1)
+                    if decoded_url not in results:
+                        results.append(decoded_url)
+                        if len(results) >= num_results:
+                            break
+
+            # Move to the next page
+            start += 10
+            
+            # Add delay between requests to avoid detection
             time.sleep(random.uniform(1, 3))
             
-        except Exception as e:
+        except RequestException as e:
             console.print(f"[yellow]Error in search_with_rotation: {str(e)}[/yellow]")
             time.sleep(5)  # Wait longer if an error occurs
-    
+
     return results[:num_results]
 
 def check_urls(urls: List[str], args: argparse.Namespace, headers: Dict[str, str]) -> List[Dict[str, Any]]:
@@ -224,7 +238,7 @@ def check_urls(urls: List[str], args: argparse.Namespace, headers: Dict[str, str
 
 def google_dork_search(args: argparse.Namespace) -> List[Dict[str, Any]]:
     """Perform Google Dork search based on the provided arguments."""
-    console.print(Panel.fit("[bold red]Google Dork Finder v5.2[/bold red]", border_style="bold"))
+    console.print(Panel.fit("[bold red]Google Dork Finder v2.0[/bold red]", border_style="bold"))
 
     dorks = [args.dork] if args.dork else []
     if args.dorks_file:
@@ -314,7 +328,7 @@ def exponential_backoff(attempt: int, max_delay: int = 60) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Advanced Google Dork Finder")
     parser.add_argument("--dork", type=str, help="Google dork query to search")
-    parser.add_argument("--dorks_file", type=str, help="File containing multiple dork queries")
+    parser.add_argument("--dorks-file", type=str, help="File containing multiple dork queries")
     parser.add_argument("--domain", type=str, help="Specific domain to search within")
     parser.add_argument("--number", type=int, default=10, help="Number of search results to display")
     parser.add_argument("--save", type=str, help="File name to save the results")

@@ -1,5 +1,5 @@
 requests==2.31.0
-beautifulsoup4==4.13.0
+beautifulsoup4==4.12.2
 fake-useragent==1.2.1
 rich==13.5.2
 anticaptchaofficial==0.6.0

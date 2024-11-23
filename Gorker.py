@@ -191,10 +191,11 @@ class GoogleDorkFinder:
         """Setup Selenium WebDriver for automated browsing"""
         try:
             chrome_options = Options()
-            chrome_options.add_argument("--headless")
+            chrome_options.add_argument("--start-maximized")  # Open browser in maximized mode
             chrome_options.add_argument("--disable-gpu")
             chrome_options.add_argument("--no-sandbox")
             chrome_options.add_argument("--disable-dev-shm-usage")
+            chrome_options.add_argument(f"user-agent={self.ua_manager.get_random()}")
             
             service = Service(ChromeDriverManager().install())
             
@@ -227,7 +228,7 @@ class GoogleDorkFinder:
 
         self._display_results(total_results)
         
-        if self.args.save:
+        if self.args.output:
             self._save_results(total_results)
 
     def _load_dorks(self) -> List[str]:
@@ -278,14 +279,24 @@ class GoogleDorkFinder:
                 }
 
                 if self.args.pre_automated_browsing and self.driver:
-                    self.driver.get(base_url + "?" + "&".join([f"{k}={v}" for k, v in params.items()]))
-                    time.sleep(3)
+                    search_url = base_url + "?" + "&".join([f"{k}={requests.utils.quote(str(v))}" for k, v in params.items()])
+                    self.driver.get(search_url)
+                    # Add explicit wait
+                    time.sleep(5)
 
                     if self._check_for_verification(self.driver):
                         logger.warning("Verification required by Google. Please bypass manually.")
                         console.print("[yellow]Google verification detected. Please bypass manually and press Enter to continue.[/yellow]")
                         input("Press Enter to continue once bypassed.")
                         continue
+
+                    # Wait for search results to load
+                    try:
+                        WebDriverWait(self.driver, 10).until(
+                            lambda x: x.find_elements(By.CSS_SELECTOR, "div.g")
+                        )
+                    except Exception as e:
+                        logger.warning(f"Timeout waiting for search results: {e}")
 
                     new_urls = self._extract_urls(self.driver.page_source)
                 else:
@@ -304,6 +315,7 @@ class GoogleDorkFinder:
                     if "recaptcha" in response.text.lower():
                         logger.warning("CAPTCHA detected")
                         console.print("[yellow]CAPTCHA encountered. Trying to bypass...[/yellow]")
+                        self.captcha_handler.solve_captcha(base_url, "site_key")  # Assuming site_key is available
                         break
 
                     if "unusual traffic" in response.text.lower():
@@ -382,15 +394,15 @@ class GoogleDorkFinder:
 
         table = Table(title="Google Dork Results", show_header=True, header_style="bold magenta")
         table.add_column("URL", style="dim", width=50)
-        table.add_column("Title")
-        table.add_column("Server")
-        table.add_column("Content-Type")
-        table.add_column("Status")
+        table.add_column("Title", width=30)
+        table.add_column("Server", width=20)
+        table.add_column("Content-Type", width=20)
+        table.add_column("Status", width=10)
 
         for result in results:
             table.add_row(
                 result.url,
-                result.title[:40],
+                result.title[:30],
                 result.server[:20],
                 result.content_type[:20],
                 str(result.status) if result.status else "Unknown"
@@ -440,16 +452,21 @@ class GoogleDorkFinder:
             save_task = progress.add_task("[cyan]Saving results...", total=len(results))
             
             try:
-                with open(self.args.output, 'w') as file:
+                with open(self.args.output, 'w', encoding='utf-8') as file:
                     file.write("URL,Status,Title,Server,Content-Type\n")
                     for result in results:
-                        file.write(f"{result.url},{result.status},{result.title},{result.server},{result.content_type}\n")
+                        # Clean the data to prevent CSV issues
+                        clean_title = result.title.replace(',', ' ').replace('\n', ' ').strip()
+                        clean_server = result.server.replace(',', ' ').replace('\n', ' ').strip()
+                        clean_content_type = result.content_type.replace(',', ' ').replace('\n', ' ').strip()
+                        
+                        file.write(f"{result.url},{result.status},{clean_title},{clean_server},{clean_content_type}\n")
                         progress.advance(save_task)
                 
                 console.print(f"[green]✓[/green] Results saved to: {self.args.output}")
             except IOError as e:
                 console.print(f"[red]✗[/red] Error saving results: {e}")
-                
+
 def parse_args() -> argparse.Namespace:
     """Parse command-line arguments"""
     parser = argparse.ArgumentParser(description="Google Dork Finder")
@@ -459,13 +476,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("-n", "--number", type=int, default=50, help="Number of results to fetch")
     parser.add_argument("--delay", type=int, default=2, help="Delay between requests (seconds)")
     parser.add_argument("-o", "--output", help="Output file to save results")
-    parser.add_argument("--save", action="store_true", help="Save results to file")
     parser.add_argument("--tor", action="store_true", help="Use Tor network")
     parser.add_argument("--antirecaptcha-api", help="API key for solving reCAPTCHA")
     parser.add_argument("--timeout", type=int, default=10, help="Request timeout (seconds)")
     parser.add_argument("--pre-automated-browsing", action="store_true", help="Use Selenium for automated browsing for bypass recaptcha")
     return parser.parse_args()
-
 
 def main():
     try:

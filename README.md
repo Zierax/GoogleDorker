@@ -42,8 +42,7 @@ python Gorker.py [OPTIONS_BELOW]
 | `--dork`                     | Specify a single dork query to use in the search.                                            |
 | `-n, --number`               | Number of results to retrieve per query (default: 10).                                       |
 | `-t, --threads`              | Number of threads to use for concurrent processing (default: 4).                             |
-| `--timeout`                  | Timeout in seconds for HTTP requests (default: 5).                                          |
-| `--save`                     | Save the results to a specified file (e.g., `results.txt`).                                  |
+| `--timeout`                  | Timeout in seconds for HTTP requests (default: 5).                                           |
 | `--delay`                    | Delay in seconds between each request to avoid rate-limiting (default: 2).                   |
 | `--proxy`                    | Use Tor for privacy by routing traffic through the Tor network.                              |
 | `--verbose`                  | Display detailed information about the search results.                                       |

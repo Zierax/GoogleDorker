@@ -1,4 +1,4 @@
-# Google Dork Finder v2.0
+# GoogleDorker v2.0
 
 Google Dork Finder is an advanced Python tool designed for efficient and comprehensive Google Dorking. It offers a wide range of features for both automated and visual dorking, making it a versatile tool for information gathering and web reconnaissance.
 

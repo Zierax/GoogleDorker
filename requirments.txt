@@ -2,7 +2,7 @@ requests==2.31.0
 beautifulsoup4==4.12.2
 fake-useragent==1.2.1
 rich==13.5.2
-anticaptchaofficial==0.6.0
+anticaptchaofficial==1.0.60
 stem==1.8.0
 selenium==4.14.0
 webdriver-manager==4.0.0
